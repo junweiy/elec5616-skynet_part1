@@ -2,6 +2,7 @@ import struct
 import random
 
 from Crypto.Cipher import AES
+from Crypto.Random import random as rd
 from Crypto.Hash import HMAC, SHA256
 
 from dh import create_dh_key, calculate_dh_secret
@@ -37,10 +38,18 @@ class StealthConn(object):
         # Generate random initialisation vector with length equal to block size
         iv_string = "{:016b}".format(random.getrandbits(AES.block_size))
         iv = bytes(iv_string, "ascii")
+        # Chosen AES as cipher in Cipher Feedback mode with first half of shared hash as 32 bytes key
         self.cipher = AES.new(shared_hash[:32], AES.MODE_CFB, iv)
+        # Initialise HMAC with second half of shared hash as the secret
         self.hmac = HMAC.new(str(shared_hash[33:]).encode("ascii"), digestmod=SHA256)
 
+
     def send(self, data):
+        # Randomly generate one-time session token to prevent replay attack
+        if self.cipher and not(self.token):
+            self.token = SHA256.new(bytes(str(rd.getrandbits(16)), "ascii")).hexdigest().encode("ascii")
+            self.hmac.update(self.token)
+            self.conn.sendall(struct.pack('64s', self.token))
         if self.cipher:
             self.hmac.update(data)
             encrypted_data = self.cipher.encrypt(data)
@@ -60,6 +69,11 @@ class StealthConn(object):
         self.conn.sendall(encrypted_data)
 
     def recv(self):
+        if self.cipher and not(self.token):
+            token_packed = self.conn.recv(struct.calcsize('64s'))
+            unpacked_token = struct.unpack('64s', token_packed)
+            self.token = unpacked_token[0]
+            self.hmac.update(self.token)
         # Decode the data's length from an unsigned two byte int ('H')
         if self.hmac:
             hmac_packed = self.conn.recv(struct.calcsize('64s'))
@@ -68,13 +82,17 @@ class StealthConn(object):
         unpacked_contents = struct.unpack('H', pkt_len_packed)
         pkt_len = unpacked_contents[0]
         encrypted_data = self.conn.recv(pkt_len)
+
         if self.cipher:
             data = self.cipher.decrypt(encrypted_data)
             hmac_digest = unpacked_hmac[0]
             self.hmac.update(data)
-            print(self.hmac.hexdigest(), '**', hmac_digest.decode("ascii"))
             if self.hmac.hexdigest() != hmac_digest.decode("ascii"):
                 print('HMAC verification failed')
+            if not(self.token):
+                self.token = data
+                print("*", type(self.token))
+                return
             if self.verbose:
                 print("Receiving packet of length {}".format(pkt_len))
                 print("Encrypted data: {}".format(repr(encrypted_data)))
