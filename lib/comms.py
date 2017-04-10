@@ -50,6 +50,8 @@ class StealthConn(object):
         if self.cipher:
             # Update HMAC with session token and data
             self.hmac.update(self.token)
+            if not isinstance(data, bytes):
+                data = bytes(str(data), "ascii")
             self.hmac.update(data)
             # Encrypted token and data to be sent
             encrypted_token = self.cipher.encrypt(self.token)
