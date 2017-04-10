@@ -48,10 +48,11 @@ class StealthConn(object):
         if self.cipher and not(self.token):
             self.token = SHA256.new(bytes(str(rd.getrandbits(16)), "ascii")).hexdigest().encode("ascii")
         if self.cipher:
+            # Update HMAC with session token and data
             self.hmac.update(self.token)
             self.hmac.update(data)
+            # Encrypted token and data to be sent
             encrypted_token = self.cipher.encrypt(self.token)
-            token_len = struct.pack('H', len(encrypted_token))
             encrypted_data = self.cipher.encrypt(data)
             if self.verbose:
                 print("Original data: {}".format(data))
@@ -62,27 +63,37 @@ class StealthConn(object):
         # Encode the data's length into an unsigned two byte int ('H')
         pkt_len = struct.pack('H', len(encrypted_data))
         if self.hmac:
+            # Encode the length of token
+            token_len = struct.pack('H', len(encrypted_token))
             self.conn.sendall(token_len)
             self.conn.sendall(encrypted_token)
+            # Encode the HMAC digest without encryption due to difficulty cracking HMAC secret
             hmac_digest = struct.pack('64s', bytes(self.hmac.hexdigest(), "ascii"))
             self.conn.sendall(hmac_digest)
         self.conn.sendall(pkt_len)
         self.conn.sendall(encrypted_data)
 
     def recv(self):
+        # Extract encrypted session token for all messages when cipher and HMAC exist
         if self.cipher:
+            # Receive and decrypt token
             token_len_packed = self.conn.recv(struct.calcsize('H'))
             token_len_unpacked = struct.unpack('H', token_len_packed)
             token_len = token_len_unpacked[0]
             encrypted_token = self.conn.recv(token_len)
             token = self.cipher.decrypt(encrypted_token)
-            if not(self.token):
+            # Initialise received token from the other party
+            if not self.token:
                 self.token = token
             self.hmac.update(token)
-        # Decode the data's length from an unsigned two byte int ('H')
+
+        # Extract received HMAC
         if self.hmac:
             hmac_packed = self.conn.recv(struct.calcsize('64s'))
             unpacked_hmac = struct.unpack('64s', hmac_packed)
+            hmac_digest = unpacked_hmac[0]
+
+        # Extract received data
         pkt_len_packed = self.conn.recv(struct.calcsize('H'))
         unpacked_contents = struct.unpack('H', pkt_len_packed)
         pkt_len = unpacked_contents[0]
@@ -90,16 +101,11 @@ class StealthConn(object):
 
         if self.cipher:
             data = self.cipher.decrypt(encrypted_data)
-            hmac_digest = unpacked_hmac[0]
             self.hmac.update(data)
-            if self.hmac.hexdigest() != hmac_digest.decode("ascii"):
-                print('HMAC verification failed')
-            if self.token != token:
-                print('Session token incorrect')
-            if not(self.token):
-                self.token = data
-                print("*", type(self.token))
-                return
+            # Check HMAC in case of tampering with messages
+            assert(self.hmac.hexdigest() == hmac_digest.decode("ascii"))
+            # Check session token to prevent replay attack
+            assert(self.token == token)
             if self.verbose:
                 print("Receiving packet of length {}".format(pkt_len))
                 print("Encrypted data: {}".format(repr(encrypted_data)))
