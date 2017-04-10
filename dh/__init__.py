@@ -23,12 +23,12 @@ prime = read_hex(raw_prime)
 def create_dh_key():
     # Creates a Diffie-Hellman key
     # Returns (public, private)
-    a = random.randint(0, int(2**8))
-    return (a, a)
+    a = random.randint(2, prime - 1)
+    return (pow(2, a, prime), a)
 
 def calculate_dh_secret(their_public, my_private):
     # Calculate the shared secret
-    shared_secret = their_public * my_private
+    shared_secret = (their_public * pow(2, my_private, prime)) % prime
 
     # Hash the value so that:
     # (a) There's no bias in the bits of the output
@@ -36,5 +36,6 @@ def calculate_dh_secret(their_public, my_private):
     # (b) We can convert to raw bytes easily
     # (c) We could add additional information if we wanted
     # Feel free to change SHA256 to a different value if more appropriate
-    shared_hash = SHA256.new(bytes(shared_secret, "ascii")).hexdigest()
+    shared_hash = SHA256.new(bytes(str(shared_secret), "ascii")).hexdigest()
     return shared_hash
+
