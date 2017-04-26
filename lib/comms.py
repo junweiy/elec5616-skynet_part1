@@ -118,9 +118,13 @@ class StealthConn(object):
             # Unpad data
             data = bytes(unpad(data.decode("ascii")), "ascii")
             # Check HMAC in case of tampering with messages
-            assert(self.hmac.hexdigest() == hmac_digest.decode("ascii"))
+            if not self.hmac.hexdigest() == hmac_digest.decode("ascii"):
+                print("HMAC verification failed, connection will be closed.")
+                self.conn.close()
             # Check session token to prevent replay attack
-            assert(self.token == token)
+            if not self.token == token:
+                print("Session ID verification failed, connection will be closed.")
+                self.conn.close()
             if self.verbose:
                 print("Receiving packet of length {}".format(pkt_len))
                 print("Encrypted data: {}".format(repr(encrypted_data)))
