@@ -1,6 +1,6 @@
 import os
 from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA
+from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_PSS
 
 # Sign hash of file with generated private key
@@ -8,11 +8,10 @@ def sign_file(f):
     key_file = open('privateKey.pem')
     private_key = RSA.importKey(key_file.read())
     key_file.close()
-    h = SHA.new()
+    h = SHA256.new()
     h.update(f)
     signature = PKCS1_PSS.new(private_key).sign(h)
     # signature and message will be returned
-    print(signature + f)
     return signature + f
 
 

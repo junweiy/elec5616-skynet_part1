@@ -1,6 +1,6 @@
 import os
 from Crypto.PublicKey import RSA
-from Crypto.Hash import SHA
+from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_PSS
 
 # Instead of storing files on disk,
@@ -42,7 +42,7 @@ def verify_file(f):
     public_key = RSA.importKey(key_file.read())
     key_file.close()
     # Verify the signature
-    h = SHA.new()
+    h = SHA256.new()
     h.update(contents)
     verifier = PKCS1_PSS.new(public_key)
     return True if verifier.verify(h, signature) else False
