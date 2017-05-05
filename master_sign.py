@@ -11,6 +11,8 @@ def sign_file(f):
     h = SHA.new()
     h.update(f)
     signature = PKCS1_PSS.new(private_key).sign(h)
+    # signature and message will be returned
+    print(signature + f)
     return signature + f
 
 
