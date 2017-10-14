@@ -1,0 +1,34 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">New Issue</h1>
+
+        <form class="newbooking pure-form pure-form-aligned" method="POST" action="{{url_for('new_issue')}}">
+            <div class="pure-control-group">
+                <label for="title">Title:</label>
+                <input type="text" name="title" placeholder="Title" autofocus required>
+            </div>
+			<div class="pure-control-group">
+                <label for="creator">Creator:</label>
+                <input type="text" name="creator" placeholder="Creator" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="resolver"> Resolver: </label>
+                <input type="text" name="resolver" placeholder="Resolver" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="verifier"> Verifier: </label>
+                <input type="text" name="verifier" placeholder="Verifier" required>
+            </div>
+            <div class="pure-control-group">
+                <label for="description"> Description: </label>
+                <input type="text" name="description" placeholder="Description" rows="50" required>
+                
+            </div>
+            <button type="submit" class="flat">Add Issue</button>
+        </form>
+    </div>
+</div>
+
+{% include 'bottom.html' %}

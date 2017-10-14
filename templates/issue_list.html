@@ -1,0 +1,51 @@
+{% include 'top.html' %}
+
+<div class="content">
+    <div class="container">
+        <h1 class="title">Issue</h1>
+        <div class="search">
+            <form class="search-top" method="POST" action="{{url_for('list_issue')}}">
+                <input type="text" name="search" placeholder="Search Issue" autofocus required>
+                <button class="flat" type="submit">Find</button>
+                <div class="clear"></div>
+            </form>
+        </div>
+        <table class="styled">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Creator</th>
+                    <th>Resolver</th>
+                    <th>Verifier</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                    {% for e in issue %}
+                    <tr class='clickable-row' data-href="{{url_for('update_issue')}}" method = POST>
+                        <td>{{ e.title }}</td>
+                        <td>{{ e.creator }}</td>
+                        <td>{{ e.resolver }}</td>
+                        <td>{{ e.verifier }}</td>
+                        <td>{{ e.description }}</td>
+                    </tr>
+                    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript" defer="defer"> jQuery(document).ready(function($) {
+    $(".clickable-row").click(function() {
+        window.location = $(this).data("href");
+    });
+	$(".clickable-row").mouseover(function() {
+        $(this).css('background-color', '#eeeeee');
+    });
+	$(".clickable-row").mouseout(function() {
+        $(this).css('background-color', 'white');
+    });
+
+});
+</script>
+
+{% include 'bottom.html' %}
